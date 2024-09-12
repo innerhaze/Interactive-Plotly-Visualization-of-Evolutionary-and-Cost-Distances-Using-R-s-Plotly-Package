@@ -1,0 +1,97 @@
+---
+title: "Interactive Visualization of Evolutionary and Least Cost Distances Between Espeletiinae Individuals Using R's Plotly Package"
+author: "Sebastián Sánchez Cuartas"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+      position: "left"
+    theme: flatly
+    highlight: tango
+---
+
+------------------------------------------------------------------------
+
+## **Linear Regression Analysis**
+
+In this analysis, linear regression is applied to explore the relationship between evolutionary distances (`Evolutionary_distances`) and the distance of least cost (`DistM`). Linear regression helps to understand how `Evolutionary_distances` changes as a function of `DistM`.
+
+Linear regression fits a model that seeks to explain the dependent variable (`Evolutionary_distances`) as a function of an independent variable (`DistM`). The model equation is:
+
+$$
+\text{Evolutionary Distances} = \beta_0 + \beta_1 \times \text{DistM}
+$$
+
+where $\beta_0$ is the intercept and $\beta_1$ is the slope of the regression.
+
+------------------------------------------------------------------------
+
+```{r, echo=TRUE, results='hide', message=FALSE, warning=FALSE}
+
+library(plotly)
+
+```
+
+```{r setup, echo=TRUE, results='hide'}
+
+# Load the two matrices
+distm_matrix <- read.csv("C:/Users/Usuario/Desktop/Archivos_tesis/Resultados_matrices_indices/Indices_matrices_Clado_Colombiano/DistM.csv", row.names = 1)
+times_matrix <- read.csv("C:/Users/Usuario/Desktop/Archivos_tesis/Distancias_evolutivas/Dis_evol_Clado_Colombiano/Dist_evol_Clado_Colombiano_ordenado_COriental.csv", row.names = 1)
+
+# Calculate the correlation between the matrices
+correlation <- cor(as.matrix(distm_matrix), as.matrix(times_matrix), use = "pairwise.complete.obs")
+
+# Ignore the diagonal
+diag(correlation) <- 0
+
+# Obtain the pairs of corresponding values
+distm_values <- distm_matrix[lower.tri(distm_matrix)]
+times_values <- times_matrix[lower.tri(times_matrix)]
+row_names <- rownames(distm_matrix)[row(distm_matrix)[lower.tri(distm_matrix)]]
+column_names <- colnames(distm_matrix)[col(distm_matrix)[lower.tri(distm_matrix)]]
+
+# Create a DataFrame with pairs of values and row and column names
+data <- data.frame(DistM = distm_values, Evolutionary_distances = times_values, ID1 = row_names, ID2 = column_names)
+
+# Ignore pairs with NA
+data <- na.omit(data)
+
+# Calculate the linear regression
+regression <- lm(Evolutionary_distances ~ DistM, data = data)
+
+# Obtain the regression coefficients
+coefficients <- coef(regression)
+
+```
+
+------------------------------------------------------------------------
+
+## **Graph Interpretation**
+
+In the graph below:
+
+-   The points represent the observed data for `DistM` and `Evolutionary_distances`.
+
+-   The regression line, in orange, illustrates the adjusted relationship between `DistM` and `Evolutionary_distances`.
+
+This graph provides a visualization of how the distance of least cost can predict evolutionary distances in the Eastern Cordillera of the Andes.
+
+------------------------------------------------------------------------
+
+```{r plot, echo=TRUE, results='markup', message=FALSE}
+
+plot_ly(data, x = ~DistM, y = ~Evolutionary_distances,
+        text = ~paste("ID1: ", ID1, "<br>ID2: ", ID2), type = "scatter", mode = "markers",
+        marker = list(line = list(color = 'rgb(255, 255, 255)', width = 0.8),
+                      opacity = 0.9)) %>%
+  add_lines(x = data$DistM, y = predict(regression), 
+            line = list(color = "orange", width = 4)) %>%
+  layout(xaxis = list(title = "EvolDist", tickfont = list(color = 'rgba(0, 0, 0, 80)')), 
+         yaxis = list(title = "DistM", tickfont = list(color = 'rgba(0, 0, 0, 80)')), 
+         title = list(text = "Evolutionary vs. Minimum Cost Distance of Espeletiinae in the Eastern Andes", font = list(color = 'rgba(0, 0, 0, 80)')), 
+         plot_bgcolor = 'rgba(255, 255, 255, 80)',
+         legend = list(font = list(color = 'rgba(0, 0, 0, 80)')))
+```
